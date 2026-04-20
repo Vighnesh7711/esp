@@ -3,361 +3,844 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Classroom Analytics</title>
+    <title>Smart Classroom — Energy Analytics</title>
+    <meta name="description" content="Real-time energy monitoring dashboard for Smart Classroom IoT system">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #0b0f19;
-            --card-bg: rgba(30, 41, 59, 0.7);
-            --primary: #00f2fe;
-            --secondary: #4facfe;
-            --accent: #10b981;
-            --danger: #ef4444;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
+            --bg: #06080f;
+            --bg2: #0c1021;
+            --surface: rgba(15, 23, 42, 0.65);
+            --surface-hover: rgba(25, 35, 55, 0.8);
+            --border: rgba(99, 179, 237, 0.08);
+            --border-hover: rgba(99, 179, 237, 0.2);
+            --cyan: #22d3ee;
+            --cyan-glow: rgba(34, 211, 238, 0.35);
+            --blue: #3b82f6;
+            --indigo: #818cf8;
+            --emerald: #34d399;
+            --amber: #fbbf24;
+            --rose: #fb7185;
+            --violet: #a78bfa;
+            --text: #f1f5f9;
+            --text2: #94a3b8;
+            --text3: #64748b;
+            --radius: 18px;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Inter', sans-serif;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            background-color: var(--bg-color);
-            background-image: 
-                radial-gradient(at 0% 0%, rgba(79, 172, 254, 0.15) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.1) 0px, transparent 50%);
-            color: var(--text-main);
+            font-family: 'Inter', -apple-system, system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
             min-height: 100vh;
-            padding: 2rem;
-            display: flex;
-            flex-direction: column;
-            gap: 2rem;
+            overflow-x: hidden;
         }
 
-        header {
+        /* ─── Ambient background ─── */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -40%; left: -20%;
+            width: 80vw; height: 80vw;
+            background: radial-gradient(circle, rgba(34,211,238,0.06) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: -30%; right: -15%;
+            width: 70vw; height: 70vw;
+            background: radial-gradient(circle, rgba(129,140,248,0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ─── Loading overlay ─── */
+        .loader {
+            position: fixed; inset: 0;
+            background: var(--bg);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.6s ease, visibility 0.6s;
+        }
+        .loader.hide { opacity: 0; visibility: hidden; }
+        .loader-ring {
+            width: 48px; height: 48px;
+            border: 3px solid rgba(34,211,238,0.15);
+            border-top-color: var(--cyan);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        .loader p { margin-top: 16px; color: var(--text2); font-size: 0.85rem; letter-spacing: 1px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ─── Layout ─── */
+        .wrapper {
+            position: relative; z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px 28px 60px;
+        }
+
+        /* ─── Header ─── */
+        .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            flex-wrap: wrap;
+            gap: 16px;
+            padding-bottom: 24px;
+            margin-bottom: 28px;
+            border-bottom: 1px solid var(--border);
         }
-
-        h1 {
-            font-size: 2rem;
-            font-weight: 700;
-            background: linear-gradient(to right, var(--primary), var(--secondary));
+        .header-left { display: flex; align-items: center; gap: 14px; }
+        .header-logo {
+            width: 44px; height: 44px;
+            background: linear-gradient(135deg, var(--cyan), var(--indigo));
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem;
+            box-shadow: 0 4px 20px var(--cyan-glow);
+        }
+        .header h1 {
+            font-size: 1.6rem; font-weight: 800;
+            background: linear-gradient(135deg, var(--cyan), var(--indigo));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            line-height: 1.2;
         }
+        .header h1 span { display: block; font-size: 0.75rem; font-weight: 400; color: var(--text3); -webkit-text-fill-color: var(--text3); }
+        .header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 
-        .status-badge {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.875rem;
-            font-weight: 600;
-            padding: 0.5rem 1rem;
+        .badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 14px;
             border-radius: 999px;
-            background: rgba(16, 185, 129, 0.15);
-            color: var(--accent);
-            border: 1px solid rgba(16, 185, 129, 0.3);
+            font-size: 0.75rem; font-weight: 600;
+            border: 1px solid;
+            backdrop-filter: blur(8px);
+            transition: all 0.3s;
+        }
+        .badge-live { background: rgba(34,211,238,0.1); border-color: rgba(34,211,238,0.25); color: var(--cyan); }
+        .badge-live .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--cyan); animation: pulse-glow 2s infinite; }
+        .badge-offline { background: rgba(251,113,133,0.1); border-color: rgba(251,113,133,0.25); color: var(--rose); }
+        .badge-data { background: rgba(129,140,248,0.08); border-color: rgba(129,140,248,0.2); color: var(--indigo); }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 0 0 var(--cyan-glow); }
+            50% { box-shadow: 0 0 0 6px transparent; }
         }
 
-        .status-badge.offline {
-            background: rgba(239, 68, 68, 0.15);
-            color: var(--danger);
-            border-color: rgba(239, 68, 68, 0.3);
+        .refresh-btn {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text2);
+            border-radius: 10px;
+            padding: 8px 16px;
+            font-size: 0.78rem; font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s;
+            font-family: inherit;
+            display: inline-flex; align-items: center; gap: 6px;
         }
+        .refresh-btn:hover { border-color: var(--cyan); color: var(--cyan); transform: translateY(-1px); }
+        .refresh-btn.spinning svg { animation: spin 0.6s linear infinite; }
 
-        .grid {
+        /* ─── Stat Cards ─── */
+        .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 1.5rem;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px;
+            margin-bottom: 24px;
         }
+        @media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 560px) { .stats-grid { grid-template-columns: 1fr; } }
 
-        .card {
-            background: var(--card-bg);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255,255,255,0.05);
-            border-radius: 16px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.2);
-            transition: transform 0.3s ease;
+        .stat-card {
+            background: var(--surface);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 22px 24px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.35s ease;
         }
-
-        .card:hover {
-            transform: translateY(-5px);
-            border-color: rgba(255,255,255,0.15);
+        .stat-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--border-hover);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.25);
         }
+        .stat-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            border-radius: var(--radius) var(--radius) 0 0;
+        }
+        .stat-card:nth-child(1)::before { background: linear-gradient(90deg, var(--cyan), var(--blue)); }
+        .stat-card:nth-child(2)::before { background: linear-gradient(90deg, var(--indigo), var(--violet)); }
+        .stat-card:nth-child(3)::before { background: linear-gradient(90deg, var(--emerald), var(--cyan)); }
+        .stat-card:nth-child(4)::before { background: linear-gradient(90deg, var(--amber), var(--rose)); }
 
-        .card h3 {
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: var(--text-muted);
+        .stat-card .stat-icon {
+            font-size: 1.6rem;
+            margin-bottom: 10px;
+            display: inline-block;
+        }
+        .stat-card .stat-label {
+            font-size: 0.72rem;
+            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 0.5rem;
+            letter-spacing: 1.2px;
+            color: var(--text3);
+            margin-bottom: 6px;
         }
-
-        .card .value {
-            font-size: 2.5rem;
-            font-weight: 700;
+        .stat-card .stat-value {
+            font-size: 2.2rem;
+            font-weight: 800;
+            line-height: 1.1;
             display: flex;
             align-items: baseline;
-            gap: 0.25rem;
+            gap: 6px;
         }
-
-        .card .unit {
-            font-size: 1rem;
-            color: var(--text-muted);
-            font-weight: 400;
+        .stat-card .stat-unit {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text3);
         }
-
-        .chart-container {
-            width: 100%;
-            height: 350px;
-            background: var(--card-bg);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255,255,255,0.05);
-            border-radius: 16px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.2);
-        }
-
-        .appliances-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-
-        .appliance {
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(255,255,255,0.05);
-            border-radius: 12px;
-            padding: 1rem;
+        .stat-card .stat-sub {
+            margin-top: 8px;
+            font-size: 0.72rem;
+            color: var(--text3);
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            gap: 4px;
+        }
+        .stat-card .stat-sub .up { color: var(--emerald); }
+        .stat-card .stat-sub .down { color: var(--rose); }
+
+        /* ─── Sections ─── */
+        .section-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 18px;
+            margin-bottom: 24px;
+        }
+        @media (max-width: 900px) { .section-row { grid-template-columns: 1fr; } }
+
+        .panel {
+            background: var(--surface);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            transition: border-color 0.3s;
+        }
+        .panel:hover { border-color: var(--border-hover); }
+        .panel-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .panel-title span { display: flex; align-items: center; gap: 8px; }
+        .panel-title .tag {
+            font-size: 0.65rem; font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 6px;
+            background: rgba(34,211,238,0.1);
+            color: var(--cyan);
         }
 
-        .app-info {
+        /* ─── Chart containers ─── */
+        .chart-wrap { position: relative; height: 320px; }
+        .chart-wrap-sm { position: relative; height: 260px; }
+
+        /* ─── Appliance cards ─── */
+        .app-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+        }
+        .app-card {
+            background: rgba(10, 15, 30, 0.5);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+        }
+        .app-card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+        }
+        .app-card .app-icon {
+            width: 42px; height: 42px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+        }
+        .app-card .app-icon.on { background: rgba(34,211,238,0.12); box-shadow: 0 0 16px rgba(34,211,238,0.15); }
+        .app-card .app-icon.off { background: rgba(100,116,139,0.12); }
+        .app-card .app-details { flex: 1; min-width: 0; }
+        .app-card .app-name { font-size: 0.85rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .app-card .app-meta { font-size: 0.7rem; color: var(--text3); margin-top: 2px; }
+        .app-card .app-status {
+            font-size: 0.65rem; font-weight: 700;
+            padding: 3px 10px; border-radius: 6px;
+            flex-shrink: 0;
+        }
+        .app-card .app-status.on { background: rgba(52,211,153,0.12); color: var(--emerald); border: 1px solid rgba(52,211,153,0.25); }
+        .app-card .app-status.off { background: rgba(100,116,139,0.1); color: var(--text3); border: 1px solid rgba(100,116,139,0.2); }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text3);
+            font-size: 0.85rem;
+        }
+        .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 10px; opacity: 0.5; }
+
+        /* ─── Event Log ─── */
+        .log-list {
+            max-height: 320px;
+            overflow-y: auto;
             display: flex;
             flex-direction: column;
+            gap: 4px;
         }
-        .app-name { font-weight: 600; font-size: 1rem; }
-        .app-watts { font-size: 0.75rem; color: var(--text-muted); }
+        .log-list::-webkit-scrollbar { width: 4px; }
+        .log-list::-webkit-scrollbar-track { background: transparent; }
+        .log-list::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.3); border-radius: 4px; }
+        .log-item {
+            font-size: 0.72rem;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            padding: 6px 10px;
+            border-radius: 6px;
+            color: var(--text2);
+            background: rgba(10,15,30,0.4);
+            border-left: 2px solid var(--border);
+            transition: background 0.2s;
+        }
+        .log-item:hover { background: rgba(15,23,42,0.6); }
+        .log-time { color: var(--text3); margin-right: 8px; }
 
-        .toggle-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: var(--text-muted);
-            box-shadow: 0 0 10px transparent;
+        /* ─── Data table ─── */
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.78rem;
         }
-        .toggle-dot.on {
-            background: var(--primary);
-            box-shadow: 0 0 12px var(--primary);
+        .data-table th {
+            text-align: left;
+            padding: 10px 14px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text3);
+            border-bottom: 1px solid var(--border);
+            position: sticky; top: 0;
+            background: rgba(15,23,42,0.95);
+            backdrop-filter: blur(8px);
         }
-        
-        .loading-layer {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg-color);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 50;
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--primary);
-            transition: opacity 0.5s;
+        .data-table td {
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+            color: var(--text2);
         }
+        .data-table tr:hover td { background: rgba(34,211,238,0.03); }
+        .table-wrap { max-height: 340px; overflow-y: auto; border-radius: 12px; }
+        .table-wrap::-webkit-scrollbar { width: 4px; }
+        .table-wrap::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.3); border-radius: 4px; }
+
+        /* ─── Footer ─── */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.7rem;
+            color: var(--text3);
+            border-top: 1px solid var(--border);
+            margin-top: 20px;
+        }
+
+        /* ─── Animations ─── */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-in { animation: fadeUp 0.5s ease forwards; opacity: 0; }
+        .animate-in:nth-child(1) { animation-delay: 0.05s; }
+        .animate-in:nth-child(2) { animation-delay: 0.1s; }
+        .animate-in:nth-child(3) { animation-delay: 0.15s; }
+        .animate-in:nth-child(4) { animation-delay: 0.2s; }
     </style>
 </head>
 <body>
 
-    <div class="loading-layer" id="loader">Initializing Analytics...</div>
+<!-- Loading Overlay -->
+<div class="loader" id="loader">
+    <div class="loader-ring"></div>
+    <p>CONNECTING TO DATABASE</p>
+</div>
 
-    <header>
-        <h1>Smart Classroom Analytics</h1>
-        <div class="status-badge" id="connStatus">
-            <span style="font-size: 1.2rem;">⚡</span> Live Sync
+<div class="wrapper">
+
+    <!-- ─── Header ─── -->
+    <header class="header" id="header">
+        <div class="header-left">
+            <div class="header-logo">🏫</div>
+            <h1>Smart Classroom
+                <span>Real-time Energy Analytics Dashboard</span>
+            </h1>
+        </div>
+        <div class="header-right">
+            <div class="badge badge-live" id="statusBadge">
+                <div class="pulse"></div>
+                <span id="statusText">Connecting…</span>
+            </div>
+            <div class="badge badge-data" id="recordBadge">📊 <span id="recordCount">0</span> records</div>
+            <button class="refresh-btn" id="refreshBtn" onclick="manualRefresh()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+                Refresh
+            </button>
         </div>
     </header>
 
-    <div class="grid">
-        <div class="card">
-            <h3>Current Power Draw</h3>
-            <div class="value" id="powerNow">0 <span class="unit">W</span></div>
+    <!-- ─── Stat Cards ─── -->
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card animate-in">
+            <div class="stat-icon">⚡</div>
+            <div class="stat-label">Current Power</div>
+            <div class="stat-value" id="vPower">-- <span class="stat-unit">W</span></div>
+            <div class="stat-sub" id="sPowerSub"></div>
         </div>
-        <div class="card">
-            <h3>Total Energy Consumed</h3>
-            <div class="value" id="totalWh">0.0 <span class="unit">Wh</span></div>
+        <div class="stat-card animate-in">
+            <div class="stat-icon">🔋</div>
+            <div class="stat-label">Total Energy</div>
+            <div class="stat-value" id="vEnergy">-- <span class="stat-unit">Wh</span></div>
+            <div class="stat-sub" id="sEnergySub"></div>
         </div>
-        <div class="card">
-            <h3>Estimated Cost</h3>
-            <div class="value" style="color: var(--accent);">₹<span id="cost">0.00</span></div>
+        <div class="stat-card animate-in">
+            <div class="stat-icon">💰</div>
+            <div class="stat-label">Estimated Cost</div>
+            <div class="stat-value" style="color: var(--emerald);" id="vCost">₹-- </div>
+            <div class="stat-sub" id="sCostSub"></div>
         </div>
-        <div class="card" id="roomCard">
-            <h3>Room Occupancy</h3>
-            <div class="value" id="occupancy" style="font-size: 2rem;">Vacent</div>
-        </div>
-    </div>
-
-    <!-- Chart -->
-    <div class="chart-container">
-        <canvas id="energyChart"></canvas>
-    </div>
-
-    <!-- Active Appliances -->
-    <div>
-        <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-muted);">Active Appliances</h2>
-        <div class="appliances-grid" id="appGrid">
-            <!-- Dynamic Apps injection -->
+        <div class="stat-card animate-in">
+            <div class="stat-icon" id="occIcon">👤</div>
+            <div class="stat-label">Room Status</div>
+            <div class="stat-value" id="vOccupancy" style="font-size:1.6rem;">--</div>
+            <div class="stat-sub" id="sOccSub"></div>
         </div>
     </div>
 
-    <script>
-        let powerChart;
-        
-        // Initialize Chart.js
-        function setupChart() {
-            const ctx = document.getElementById('energyChart').getContext('2d');
-            
-            // Gradient for the line fill
-            let gradient = ctx.createLinearGradient(0, 0, 0, 400);
-            gradient.addColorStop(0, 'rgba(0, 242, 254, 0.4)');   
-            gradient.addColorStop(1, 'rgba(79, 172, 254, 0.0)');
+    <!-- ─── Power Chart + Doughnut ─── -->
+    <div class="section-row">
+        <div class="panel animate-in">
+            <div class="panel-title">
+                <span>📈 Power Consumption Over Time</span>
+                <span class="tag" id="chartRange">Last 50 readings</span>
+            </div>
+            <div class="chart-wrap">
+                <canvas id="powerChart"></canvas>
+            </div>
+        </div>
+        <div class="panel animate-in">
+            <div class="panel-title">
+                <span>🍩 Appliance Breakdown</span>
+                <span class="tag">Latest</span>
+            </div>
+            <div class="chart-wrap-sm">
+                <canvas id="doughnutChart"></canvas>
+            </div>
+            <div id="doughnutLegend" style="margin-top:12px;"></div>
+        </div>
+    </div>
 
-            powerChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: [], // Time
-                    datasets: [{
-                        label: 'Power Draw (Watts)',
-                        data: [],
-                        borderColor: '#00f2fe',
-                        backgroundColor: gradient,
-                        borderWidth: 3,
-                        pointBackgroundColor: '#fff',
-                        pointBorderColor: '#00f2fe',
-                        pointBorderWidth: 2,
-                        pointRadius: 4,
-                        pointHoverRadius: 6,
-                        fill: true,
-                        tension: 0.4 // Smooth curves
-                    }]
+    <!-- ─── Energy Bar + Appliances ─── -->
+    <div class="section-row">
+        <div class="panel animate-in">
+            <div class="panel-title">
+                <span>📊 Energy Per Appliance</span>
+                <span class="tag">Wh</span>
+            </div>
+            <div class="chart-wrap-sm">
+                <canvas id="barChart"></canvas>
+            </div>
+        </div>
+        <div class="panel animate-in">
+            <div class="panel-title">
+                <span>🔌 Active Appliances</span>
+                <span class="tag" id="appCountTag">0 devices</span>
+            </div>
+            <div id="appGrid" class="app-grid">
+                <div class="empty-state">
+                    <div class="empty-icon">📦</div>
+                    Waiting for data…
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── Event Logs + Data Table ─── -->
+    <div class="section-row">
+        <div class="panel animate-in">
+            <div class="panel-title">
+                <span>📋 Recent Data Records</span>
+                <span class="tag" id="tableCountTag">0 rows</span>
+            </div>
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Power (W)</th>
+                            <th>Energy (Wh)</th>
+                            <th>Cost (₹)</th>
+                            <th>Room</th>
+                            <th>Devices</th>
+                            <th>Mode</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody">
+                        <tr><td colspan="7" style="text-align:center; padding: 30px; color: var(--text3);">Loading…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="panel animate-in">
+            <div class="panel-title">
+                <span>🗒️ Event Logs</span>
+                <span class="tag">From ESP32</span>
+            </div>
+            <div class="log-list" id="logList">
+                <div class="empty-state">
+                    <div class="empty-icon">🗒️</div>
+                    Waiting for log data…
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="footer">
+    Smart Classroom IoT &bull; ESP32 &bull; MongoDB Atlas &bull; Auto-refreshing every 5s
+</div>
+
+<script>
+// ─── Configuration ───
+const API_URL = "https://esp-1-4a90.onrender.com/api/energy";
+const REFRESH_INTERVAL = 5000;
+
+// ─── Chart instances ───
+let powerChart = null;
+let doughnutChart = null;
+let barChart = null;
+let lastData = null;
+let fetchCount = 0;
+
+// ─── Icon map ───
+const icons = {
+    'Light':'💡','Fan':'🌀','AC':'❄️','Projector':'📽️',
+    'Heater':'🔥','Motor':'⚙️','LED Strip':'🌈','Exhaust':'🌬️',
+    'Speaker':'🔊','Charger':'🔋','SmartBoard':'📺','CCTV':'📹','Custom':'🔧'
+};
+function getIcon(name) { return icons[name] || '🔌'; }
+
+// ─── Color palette for appliances ───
+const palette = [
+    '#22d3ee', '#818cf8', '#34d399', '#fbbf24',
+    '#fb7185', '#a78bfa', '#f97316', '#06b6d4'
+];
+
+// ─── Initialize Charts ───
+function initCharts() {
+    // Power line chart
+    const ctx1 = document.getElementById('powerChart').getContext('2d');
+    const gradient = ctx1.createLinearGradient(0, 0, 0, 320);
+    gradient.addColorStop(0, 'rgba(34, 211, 238, 0.25)');
+    gradient.addColorStop(1, 'rgba(34, 211, 238, 0.0)');
+
+    powerChart = new Chart(ctx1, {
+        type: 'line',
+        data: { labels: [], datasets: [{
+            label: 'Power (W)',
+            data: [],
+            borderColor: '#22d3ee',
+            backgroundColor: gradient,
+            borderWidth: 2.5,
+            pointBackgroundColor: '#0c1021',
+            pointBorderColor: '#22d3ee',
+            pointBorderWidth: 2,
+            pointRadius: 3,
+            pointHoverRadius: 6,
+            pointHoverBackgroundColor: '#22d3ee',
+            fill: true,
+            tension: 0.4
+        }]},
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 600, easing: 'easeOutQuart' },
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(12,16,33,0.95)',
+                    titleFont: { family: 'Inter', size: 12, weight: '600' },
+                    bodyFont: { family: 'Inter', size: 14, weight: '700' },
+                    padding: 14, cornerRadius: 10, displayColors: false,
+                    borderColor: 'rgba(34,211,238,0.2)', borderWidth: 1
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#475569', font: { family: 'Inter', size: 10 }, maxTicksLimit: 8, maxRotation: 0 }
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                            titleFont: { family: 'Inter', size: 13 },
-                            bodyFont: { family: 'Inter', size: 14, weight: 'bold' },
-                            padding: 12,
-                            cornerRadius: 8,
-                            displayColors: false
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: { color: 'rgba(255,255,255,0.05)', display: false },
-                            ticks: { color: '#94a3b8', font: { family: 'Inter', size: 11 } }
-                        },
-                        y: {
-                            grid: { color: 'rgba(255,255,255,0.05)' },
-                            ticks: { color: '#94a3b8', font: { family: 'Inter', size: 11 }, padding: 10 },
-                            beginAtZero: true
-                        }
-                    }
+                y: {
+                    grid: { color: 'rgba(255,255,255,0.03)' },
+                    ticks: { color: '#475569', font: { family: 'Inter', size: 10 }, padding: 8 },
+                    beginAtZero: true
                 }
-            });
-        }
-
-        async function fetchAnalytics() {
-            try {
-                const response = await fetch("/api/energy");
-                if (!response.ok) throw new Error("Server error");
-                
-                const data = await response.json();
-                document.getElementById('connStatus').className = "status-badge";
-                document.getElementById('connStatus').innerHTML = '<span style="font-size: 1.2rem;">⚡</span> Live Sync';
-
-                if (data.length > 0) {
-                    // Get latest record for top cards
-                    const latest = data[0];
-                    
-                    document.getElementById("powerNow").innerHTML = `${latest.powerNow} <span class="unit">W</span>`;
-                    document.getElementById("totalWh").innerHTML = `${latest.totalWh.toFixed(2)} <span class="unit">Wh</span>`;
-                    document.getElementById("cost").innerText = latest.cost.toFixed(2);
-                    
-                    const occCard = document.getElementById("roomCard");
-                    if(latest.occupied) {
-                        document.getElementById("occupancy").innerText = "👤 Occupied";
-                        document.getElementById("occupancy").style.color = "var(--primary)";
-                        occCard.style.borderColor = "rgba(0, 242, 254, 0.3)";
-                    } else {
-                        document.getElementById("occupancy").innerText = "🚪 Vacant";
-                        document.getElementById("occupancy").style.color = "var(--text-muted)";
-                        occCard.style.borderColor = "rgba(255,255,255,0.05)";
-                    }
-
-                    // Render Appliances
-                    if (latest.appliances && latest.appliances.length > 0) {
-                        let appHTML = "";
-                        latest.appliances.forEach(app => {
-                            let dotClass = app.state ? 'toggle-dot on' : 'toggle-dot';
-                            appHTML += `
-                                <div class="appliance">
-                                    <div class="app-info">
-                                        <span class="app-name">${app.name}</span>
-                                        <span class="app-watts">${app.watts}W (${(app.wh||0).toFixed(2)} Wh)</span>
-                                    </div>
-                                    <div class="${dotClass}"></div>
-                                </div>
-                            `;
-                        });
-                        document.getElementById("appGrid").innerHTML = appHTML;
-                    } else {
-                        document.getElementById("appGrid").innerHTML = "<p style='color: #94a3b8; font-size: 0.85rem;'>No Active Appliances Tracked</p>";
-                    }
-
-                    // Update Chart Data (Need chronological order, so reverse the array)
-                    const chronoData = [...data].reverse();
-                    const times = chronoData.map(d => {
-                        let date = new Date(d.createdAt);
-                        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                    });
-                    const powerLevels = chronoData.map(d => d.powerNow);
-
-                    powerChart.data.labels = times;
-                    powerChart.data.datasets[0].data = powerLevels;
-                    powerChart.update();
-                }
-
-                // Hide loader on first success
-                document.getElementById('loader').style.opacity = 0;
-                setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
-
-            } catch (err) {
-                console.error("Fetch failed", err);
-                document.getElementById('connStatus').className = "status-badge offline";
-                document.getElementById('connStatus').innerHTML = '⚠️ Offline';
             }
         }
+    });
 
-        // Boot system
-        setupChart();
-        fetchAnalytics();
-        setInterval(fetchAnalytics, 3000); // Live fetch every 3 seconds
-    </script>
+    // Doughnut chart
+    const ctx2 = document.getElementById('doughnutChart').getContext('2d');
+    doughnutChart = new Chart(ctx2, {
+        type: 'doughnut',
+        data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderColor: '#0c1021', borderWidth: 3, hoverOffset: 8 }]},
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '68%',
+            animation: { animateRotate: true, duration: 800 },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(12,16,33,0.95)',
+                    bodyFont: { family: 'Inter', weight: '600' },
+                    padding: 12, cornerRadius: 10, displayColors: true,
+                    borderColor: 'rgba(34,211,238,0.15)', borderWidth: 1,
+                    callbacks: { label: function(ctx) { return ctx.label + ': ' + ctx.parsed.toFixed(1) + 'W'; } }
+                }
+            }
+        }
+    });
+
+    // Bar chart
+    const ctx3 = document.getElementById('barChart').getContext('2d');
+    barChart = new Chart(ctx3, {
+        type: 'bar',
+        data: { labels: [], datasets: [{ label: 'Energy (Wh)', data: [], backgroundColor: [], borderRadius: 8, borderSkipped: false, barPercentage: 0.6 }]},
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 600 },
+            indexAxis: 'y',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(12,16,33,0.95)',
+                    bodyFont: { family: 'Inter', weight: '600' },
+                    padding: 12, cornerRadius: 10,
+                    borderColor: 'rgba(34,211,238,0.15)', borderWidth: 1,
+                    callbacks: { label: function(ctx) { return ctx.parsed.x.toFixed(3) + ' Wh'; } }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255,255,255,0.03)' },
+                    ticks: { color: '#475569', font: { family: 'Inter', size: 10 } },
+                    beginAtZero: true
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { color: '#94a3b8', font: { family: 'Inter', size: 11, weight: '600' } }
+                }
+            }
+        }
+    });
+}
+
+// ─── Fetch & Render ───
+async function fetchData() {
+    try {
+        const res = await fetch(API_URL);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        fetchCount++;
+
+        // Update status
+        document.getElementById('statusBadge').className = 'badge badge-live';
+        document.getElementById('statusBadge').innerHTML = '<div class="pulse"></div><span>Live — Synced</span>';
+        document.getElementById('recordCount').textContent = data.length;
+
+        if (data.length === 0) {
+            hideLoader();
+            document.getElementById('statusBadge').innerHTML = '<div class="pulse"></div><span>Live — No Data Yet</span>';
+            return;
+        }
+
+        lastData = data;
+        const latest = data[0];
+        const prev = data.length > 1 ? data[1] : null;
+
+        // ── Stat Cards ──
+        document.getElementById('vPower').innerHTML = (latest.powerNow || 0).toFixed(0) + ' <span class="stat-unit">W</span>';
+        document.getElementById('vEnergy').innerHTML = (latest.totalWh || 0).toFixed(2) + ' <span class="stat-unit">Wh</span>';
+        document.getElementById('vCost').innerHTML = '₹' + (latest.cost || 0).toFixed(2);
+
+        if (latest.occupied) {
+            document.getElementById('vOccupancy').textContent = '👤 Occupied';
+            document.getElementById('vOccupancy').style.color = 'var(--cyan)';
+            document.getElementById('occIcon').textContent = '👤';
+        } else {
+            document.getElementById('vOccupancy').textContent = '🚪 Vacant';
+            document.getElementById('vOccupancy').style.color = 'var(--text3)';
+            document.getElementById('occIcon').textContent = '🚪';
+        }
+
+        // Sub info
+        document.getElementById('sPowerSub').innerHTML = latest.applianceCount ? '🔌 ' + latest.applianceCount + ' appliance(s) tracked' : '';
+        document.getElementById('sEnergySub').innerHTML = prev ? (latest.totalWh >= prev.totalWh ? '<span class="up">▲</span> Increasing' : '<span class="down">▼</span> Decreasing') : '';
+        document.getElementById('sCostSub').innerHTML = '@ ₹5/kWh';
+        document.getElementById('sOccSub').innerHTML = latest.autoMode ? '🤖 Auto mode' : '🖐️ Manual mode';
+
+        // ── Power Chart ──
+        const chrono = [...data].reverse();
+        powerChart.data.labels = chrono.map(d => {
+            const dt = new Date(d.createdAt);
+            return dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        });
+        powerChart.data.datasets[0].data = chrono.map(d => d.powerNow || 0);
+        powerChart.update();
+        document.getElementById('chartRange').textContent = 'Last ' + data.length + ' readings';
+
+        // ── Appliance Doughnut ──
+        if (latest.appliances && latest.appliances.length > 0) {
+            const apps = latest.appliances;
+            doughnutChart.data.labels = apps.map(a => getIcon(a.name) + ' ' + a.name);
+            doughnutChart.data.datasets[0].data = apps.map(a => a.watts || 0);
+            doughnutChart.data.datasets[0].backgroundColor = apps.map((_, i) => palette[i % palette.length]);
+            doughnutChart.update();
+
+            // Custom legend
+            let legendHTML = '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
+            apps.forEach((a, i) => {
+                const color = palette[i % palette.length];
+                legendHTML += '<div style="display:flex;align-items:center;gap:5px;font-size:0.72rem;color:var(--text2);">';
+                legendHTML += '<div style="width:10px;height:10px;border-radius:3px;background:' + color + ';flex-shrink:0;"></div>';
+                legendHTML += getIcon(a.name) + ' ' + a.name + ' (' + (a.watts || 0) + 'W)';
+                legendHTML += '</div>';
+            });
+            legendHTML += '</div>';
+            document.getElementById('doughnutLegend').innerHTML = legendHTML;
+
+            // Bar chart - energy per appliance
+            barChart.data.labels = apps.map(a => getIcon(a.name) + ' ' + a.name);
+            barChart.data.datasets[0].data = apps.map(a => a.wh || 0);
+            barChart.data.datasets[0].backgroundColor = apps.map((_, i) => palette[i % palette.length] + 'cc');
+            barChart.update();
+
+            // Appliance cards
+            document.getElementById('appCountTag').textContent = apps.length + ' device' + (apps.length !== 1 ? 's' : '');
+            let appHTML = '';
+            apps.forEach((a, i) => {
+                const isOn = a.state;
+                appHTML += `
+                    <div class="app-card">
+                        <div class="app-icon ${isOn ? 'on' : 'off'}">${getIcon(a.name)}</div>
+                        <div class="app-details">
+                            <div class="app-name">${a.name}</div>
+                            <div class="app-meta">GPIO ${a.pin} · ${a.watts || 0}W · ${(a.wh || 0).toFixed(2)} Wh</div>
+                        </div>
+                        <div class="app-status ${isOn ? 'on' : 'off'}">${isOn ? 'ON' : 'OFF'}</div>
+                    </div>
+                `;
+            });
+            document.getElementById('appGrid').innerHTML = appHTML;
+        } else {
+            document.getElementById('appGrid').innerHTML = '<div class="empty-state"><div class="empty-icon">📦</div>No appliances reported</div>';
+            document.getElementById('appCountTag').textContent = '0 devices';
+        }
+
+        // ── Data Table ──
+        let tableHTML = '';
+        data.slice(0, 30).forEach(d => {
+            const dt = new Date(d.createdAt);
+            const time = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const date = dt.toLocaleDateString([], { month: 'short', day: 'numeric' });
+            tableHTML += `<tr>
+                <td>${date} ${time}</td>
+                <td style="font-weight:700;color:var(--cyan);">${(d.powerNow || 0).toFixed(0)}</td>
+                <td>${(d.totalWh || 0).toFixed(2)}</td>
+                <td style="color:var(--emerald);">₹${(d.cost || 0).toFixed(2)}</td>
+                <td>${d.occupied ? '👤 Yes' : '🚪 No'}</td>
+                <td>${d.applianceCount || 0}</td>
+                <td>${d.autoMode ? '🤖 Auto' : '🖐️ Manual'}</td>
+            </tr>`;
+        });
+        document.getElementById('dataTableBody').innerHTML = tableHTML;
+        document.getElementById('tableCountTag').textContent = Math.min(data.length, 30) + ' rows';
+
+        // ── Event Logs ──
+        if (latest.logs && latest.logs.length > 0) {
+            let logHTML = '';
+            latest.logs.forEach(log => {
+                const parts = log.split(' - ');
+                const time = parts[0] || '';
+                const msg = parts.slice(1).join(' - ') || log;
+                logHTML += `<div class="log-item"><span class="log-time">${time}</span>${msg}</div>`;
+            });
+            document.getElementById('logList').innerHTML = logHTML;
+        }
+
+        hideLoader();
+
+    } catch (err) {
+        console.error('Fetch error:', err);
+        document.getElementById('statusBadge').className = 'badge badge-offline';
+        document.getElementById('statusBadge').innerHTML = '⚠️ <span>Offline — Retrying…</span>';
+        if (fetchCount === 0) {
+            // First attempt failed, still hide loader after a while
+            setTimeout(hideLoader, 3000);
+        }
+    }
+}
+
+function hideLoader() {
+    document.getElementById('loader').classList.add('hide');
+}
+
+function manualRefresh() {
+    const btn = document.getElementById('refreshBtn');
+    btn.classList.add('spinning');
+    fetchData().finally(() => {
+        setTimeout(() => btn.classList.remove('spinning'), 600);
+    });
+}
+
+// ─── Boot ───
+initCharts();
+fetchData();
+setInterval(fetchData, REFRESH_INTERVAL);
+</script>
 </body>
 </html>

@@ -1,16 +1,12 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const path = require("path");
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Expose front-end static files
-app.use(express.static(__dirname));
-
-// 🔗 MongoDB connection (replace with your URI)
+// 🔗 MongoDB connection
 mongoose.connect("mongodb+srv://Vighnesh:Blade%402004@cluster0.uqi1sas.mongodb.net/?appName=Cluster0", {
     useNewUrlParser: true,
     useUnifiedTopology: true
@@ -34,7 +30,7 @@ const energySchema = new mongoose.Schema({
 
 const Energy = mongoose.model("Energy", energySchema);
 
-// 📡 API to receive data from ESP32
+// 📡 POST - Store data from ESP32
 app.post("/api/energy", async (req, res) => {
     try {
         const data = new Energy(req.body);
@@ -45,9 +41,9 @@ app.post("/api/energy", async (req, res) => {
     }
 });
 
-// 📊 API to fetch latest data
+// 📊 GET - Fetch latest data for dashboard
 app.get("/api/energy", async (req, res) => {
-    const data = await Energy.find().sort({ createdAt: -1 }).limit(20);
+    const data = await Energy.find().sort({ createdAt: -1 }).limit(50);
     res.json(data);
 });
 
