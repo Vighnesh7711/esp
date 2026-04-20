@@ -7,7 +7,7 @@ app.use(express.json());
 app.use(cors());
 
 // 🔗 MongoDB connection (replace with your URI)
-mongoose.connect("mongodb+srv://Vighnesh:Blade@2004@cluster0.uqi1sas.mongodb.net/?appName=Cluster0", {
+mongoose.connect("mongodb+srv://Vighnesh:Blade%402004@cluster0.uqi1sas.mongodb.net/?appName=Cluster0", {
     useNewUrlParser: true,
     useUnifiedTopology: true
 })

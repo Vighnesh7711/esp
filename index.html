@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Classroom Analytics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --primary: #00f2fe;
+            --secondary: #4facfe;
+            --accent: #10b981;
+            --danger: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(79, 172, 254, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.1) 0px, transparent 50%);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 999px;
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .status-badge.offline {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255,255,255,0.15);
+        }
+
+        .card h3 {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .card .value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: baseline;
+            gap: 0.25rem;
+        }
+
+        .card .unit {
+            font-size: 1rem;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 350px;
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+        }
+
+        .appliances-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .appliance {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .app-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .app-name { font-weight: 600; font-size: 1rem; }
+        .app-watts { font-size: 0.75rem; color: var(--text-muted); }
+
+        .toggle-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            box-shadow: 0 0 10px transparent;
+        }
+        .toggle-dot.on {
+            background: var(--primary);
+            box-shadow: 0 0 12px var(--primary);
+        }
+        
+        .loading-layer {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary);
+            transition: opacity 0.5s;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="loading-layer" id="loader">Initializing Analytics...</div>
+
+    <header>
+        <h1>Smart Classroom Analytics</h1>
+        <div class="status-badge" id="connStatus">
+            <span style="font-size: 1.2rem;">⚡</span> Live Sync
+        </div>
+    </header>
+
+    <div class="grid">
+        <div class="card">
+            <h3>Current Power Draw</h3>
+            <div class="value" id="powerNow">0 <span class="unit">W</span></div>
+        </div>
+        <div class="card">
+            <h3>Total Energy Consumed</h3>
+            <div class="value" id="totalWh">0.0 <span class="unit">Wh</span></div>
+        </div>
+        <div class="card">
+            <h3>Estimated Cost</h3>
+            <div class="value" style="color: var(--accent);">₹<span id="cost">0.00</span></div>
+        </div>
+        <div class="card" id="roomCard">
+            <h3>Room Occupancy</h3>
+            <div class="value" id="occupancy" style="font-size: 2rem;">Vacent</div>
+        </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="chart-container">
+        <canvas id="energyChart"></canvas>
+    </div>
+
+    <!-- Active Appliances -->
+    <div>
+        <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-muted);">Active Appliances</h2>
+        <div class="appliances-grid" id="appGrid">
+            <!-- Dynamic Apps injection -->
+        </div>
+    </div>
+
+    <script>
+        let powerChart;
+        
+        // Initialize Chart.js
+        function setupChart() {
+            const ctx = document.getElementById('energyChart').getContext('2d');
+            
+            // Gradient for the line fill
+            let gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(0, 242, 254, 0.4)');   
+            gradient.addColorStop(1, 'rgba(79, 172, 254, 0.0)');
+
+            powerChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [], // Time
+                    datasets: [{
+                        label: 'Power Draw (Watts)',
+                        data: [],
+                        borderColor: '#00f2fe',
+                        backgroundColor: gradient,
+                        borderWidth: 3,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: '#00f2fe',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        fill: true,
+                        tension: 0.4 // Smooth curves
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleFont: { family: 'Inter', size: 13 },
+                            bodyFont: { family: 'Inter', size: 14, weight: 'bold' },
+                            padding: 12,
+                            cornerRadius: 8,
+                            displayColors: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.05)', display: false },
+                            ticks: { color: '#94a3b8', font: { family: 'Inter', size: 11 } }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#94a3b8', font: { family: 'Inter', size: 11 }, padding: 10 },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        async function fetchAnalytics() {
+            try {
+                const response = await fetch("http://localhost:5000/api/energy");
+                if (!response.ok) throw new Error("Server error");
+                
+                const data = await response.json();
+                document.getElementById('connStatus').className = "status-badge";
+                document.getElementById('connStatus').innerHTML = '<span style="font-size: 1.2rem;">⚡</span> Live Sync';
+
+                if (data.length > 0) {
+                    // Get latest record for top cards
+                    const latest = data[0];
+                    
+                    document.getElementById("powerNow").innerHTML = `${latest.powerNow} <span class="unit">W</span>`;
+                    document.getElementById("totalWh").innerHTML = `${latest.totalWh.toFixed(2)} <span class="unit">Wh</span>`;
+                    document.getElementById("cost").innerText = latest.cost.toFixed(2);
+                    
+                    const occCard = document.getElementById("roomCard");
+                    if(latest.occupied) {
+                        document.getElementById("occupancy").innerText = "👤 Occupied";
+                        document.getElementById("occupancy").style.color = "var(--primary)";
+                        occCard.style.borderColor = "rgba(0, 242, 254, 0.3)";
+                    } else {
+                        document.getElementById("occupancy").innerText = "🚪 Vacant";
+                        document.getElementById("occupancy").style.color = "var(--text-muted)";
+                        occCard.style.borderColor = "rgba(255,255,255,0.05)";
+                    }
+
+                    // Render Appliances
+                    if (latest.appliances && latest.appliances.length > 0) {
+                        let appHTML = "";
+                        latest.appliances.forEach(app => {
+                            let dotClass = app.state ? 'toggle-dot on' : 'toggle-dot';
+                            appHTML += `
+                                <div class="appliance">
+                                    <div class="app-info">
+                                        <span class="app-name">${app.name}</span>
+                                        <span class="app-watts">${app.watts}W (${(app.wh||0).toFixed(2)} Wh)</span>
+                                    </div>
+                                    <div class="${dotClass}"></div>
+                                </div>
+                            `;
+                        });
+                        document.getElementById("appGrid").innerHTML = appHTML;
+                    } else {
+                        document.getElementById("appGrid").innerHTML = "<p style='color: #94a3b8; font-size: 0.85rem;'>No Active Appliances Tracked</p>";
+                    }
+
+                    // Update Chart Data (Need chronological order, so reverse the array)
+                    const chronoData = [...data].reverse();
+                    const times = chronoData.map(d => {
+                        let date = new Date(d.createdAt);
+                        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    });
+                    const powerLevels = chronoData.map(d => d.powerNow);
+
+                    powerChart.data.labels = times;
+                    powerChart.data.datasets[0].data = powerLevels;
+                    powerChart.update();
+                }
+
+                // Hide loader on first success
+                document.getElementById('loader').style.opacity = 0;
+                setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
+
+            } catch (err) {
+                console.error("Fetch failed", err);
+                document.getElementById('connStatus').className = "status-badge offline";
+                document.getElementById('connStatus').innerHTML = '⚠️ Offline';
+            }
+        }
+
+        // Boot system
+        setupChart();
+        fetchAnalytics();
+        setInterval(fetchAnalytics, 3000); // Live fetch every 3 seconds
+    </script>
+</body>
+</html>
