@@ -1,10 +1,14 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const path = require("path");
 
 const app = express();
 app.use(express.json());
 app.use(cors());
+
+// Expose front-end static files
+app.use(express.static(__dirname));
 
 // 🔗 MongoDB connection (replace with your URI)
 mongoose.connect("mongodb+srv://Vighnesh:Blade%402004@cluster0.uqi1sas.mongodb.net/?appName=Cluster0", {
