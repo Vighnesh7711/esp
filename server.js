@@ -1,13 +1,14 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const path = require("path");
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
 // Serve frontend dashboard
-app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname)));
 
 // 🔗 MongoDB connection
 mongoose.connect("mongodb+srv://Vighnesh:Blade%402004@cluster0.uqi1sas.mongodb.net/?appName=Cluster0", {
@@ -48,6 +49,11 @@ app.post("/api/energy", async (req, res) => {
 app.get("/api/energy", async (req, res) => {
     const data = await Energy.find().sort({ createdAt: -1 }).limit(50);
     res.json(data);
+});
+
+// Serve index.html for root route
+app.get("/", (req, res) => {
+    res.sendFile(path.join(__dirname, "index.html"));
 });
 
 // 🌐 Start server
