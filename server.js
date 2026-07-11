@@ -11,7 +11,7 @@ app.use(cors());
 app.use(express.static(path.join(__dirname)));
 
 // 🔗 MongoDB connection
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/smart_classroom";
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://Vighnesh:Blade%402004@cluster0.uqi1sas.mongodb.net/?appName=Cluster0";
 mongoose.connect(MONGODB_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true
